@@ -5,13 +5,15 @@ from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.feature_selection import RFE
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import KFold
-from sklearn.neighbors import KNeighborsRegressor
+from sklearn.tree import DecisionTreeRegressor
 import matplotlib.pyplot as plt
-from scipy.stats import uniform
+from scipy.stats import randint
 from sklearn.model_selection import RandomizedSearchCV
 import sys
 import warnings
 import os
+
+#Classical Decision Tree
 
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
@@ -23,27 +25,30 @@ rfe = RFE(estimator=DecisionTreeClassifier())
 x_array = rfe.fit_transform(x_array,y_array)
 
 #Parametros =====================================================
-hiperparametros =  [{"C":1, "epsilon":0.2, "ID":"set_1"},
-                    {"C":1000, "epsilon":200, "ID":"set_2"},
-                    {"C":825000, "epsilon":1450, "ID":"set_3"},
-                    {"C":1000000, "epsilon":2000, "ID":"set_4"},]
+hiperparametros =  [{"max_depth" : 2 , "ID":"set_1"},
+                    {"max_depth" : 10, "ID":"set_2"},
+                    {"max_depth" : 20, "ID":"set_3"},
+                    {"max_depth" : 30, "ID":"set_4"},
+                    {"max_depth" : 60, "ID":"set_5"},]
 
-dicionario = dict(C=uniform(0,1000000),epsilon=uniform(0,100000))
-sufixo = "SVR"
+dicionario = dict(max_depth=randint(1,100))
+
+sufixo = "CDT"
 
 if dicionario != None:
-    train_model = SVR()
-    modelo = RandomizedSearchCV(train_model,dicionario,n_iter=10000,n_jobs=-1)
+    print("Testing")
+    train_model = DecisionTreeRegressor()
+    modelo = RandomizedSearchCV(train_model,dicionario,n_iter=1000,n_jobs=-1)
     search = modelo.fit(x_array,y_array)
-    hiperparametros.append({"C":search.best_params_["C"],"epsilon":search.best_params_["epsilon"], "ID" : "RandonSerachBest"})
+    hiperparametros.append({"max_depth":search.best_params_["max_depth"], "ID" : "RandonSerachBest"})
 #Fim Parametros =================================================
-
 
 if not os.path.exists(sufixo):
     os.makedirs(sufixo)
 
 kf = KFold(n_splits=5,shuffle=True)
 for item in hiperparametros:
+    print("Param")
     best = [None,None,None]
     r2 = []
     mse = []
@@ -52,11 +57,9 @@ for item in hiperparametros:
         y_train = y_array[train_index]
         x_test = x_array[test_index]
         y_test = y_array[test_index]
-
 #========================================================================================
-        r_model = SVR(C=item["C"],epsilon=item["epsilon"])
+        r_model = DecisionTreeRegressor(max_depth=item["max_depth"])
 #========================================================================================
-
         r_model.fit(x_train,y_train)
         cnt_predict = r_model.predict(x_test)
         r2.append(r2_score(y_test, cnt_predict))
@@ -73,9 +76,9 @@ for item in hiperparametros:
     separator = ", "
     note = "R² Mean: " + str(mean(r2)) + "\n"
     note += "MSE Mean: " + str(mean(mse)) + "\n"
-# ===========================================================================================================
-    model_param_text = "C: " + str(item["C"]) + " | epsilon: " + str(item["epsilon"])
-# ===========================================================================================================  
+#====================================================================================
+    model_param_text = "max_depth: " + str(item["max_depth"]) #+ " | n_estimators: " + str(item["n_estimators"])
+#====================================================================================
     plt.figtext(x=0.01,y=0.001,s=note)
     plt.figtext(x=0.01,y=0.95,s=model_param_text)
     plt.legend()
